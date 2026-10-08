@@ -1,0 +1,94 @@
+name: 报告 Bug
+description: 报告一个可复现的问题（请尽量附最小化 .md 片段）
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢反馈！为了让问题能被快速定位，请尽量把下面的信息填完整。
+        **注意：安全漏洞请不要用这个模板**，请改用仓库的 Security → Report a vulnerability，详见 [SECURITY.md](https://github.com/MarkStudio0913/MarkStudio/blob/main/SECURITY.md)。
+
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: 提交前确认
+      options:
+        - label: 我已搜索过现有 Issue，确认这不是重复问题
+          required: true
+        - label: 我已确认使用的不是被自行修改过的构建产物
+          required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: 问题描述
+      description: 发生了什么？期望的结果是什么？
+      placeholder: |
+        实际结果：……
+        期望结果：……
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤
+      description: 请写出可被他人照着复现的最少步骤
+      placeholder: |
+        1. 打开……
+        2. 输入……
+        3. 观察到……
+    validations:
+      required: true
+
+  - type: textarea
+    id: sample-md
+    attributes:
+      label: 最小化 Markdown 片段
+      description: 若与解析/渲染/导出相关，请贴出能复现的最短 `.md` 内容（这通常比截图有用得多）
+      render: markdown
+    validations:
+      required: false
+
+  - type: input
+    id: version
+    attributes:
+      label: MarkStudio 版本
+      description: 见「帮助 → 关于 MarkStudio」
+      placeholder: 1.0.0
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: 操作系统
+      options:
+        - Windows 10
+        - Windows 11
+        - macOS (Intel)
+        - macOS (Apple Silicon)
+        - Linux
+        - 其他（请在问题描述中说明）
+    validations:
+      required: true
+
+  - type: input
+    id: install
+    attributes:
+      label: 安装方式
+      placeholder: NSIS 安装版 / Portable / DMG / AppImage / deb / 源码运行
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: 控制台输出或截图
+      description: |
+        崩溃或异常时可附日志。以 `MARKSTUDIO_DEBUG=1` 启动应用会把渲染层日志转发到终端。
+        请先检查日志中是否含个人隐私信息（文件路径、文档内容）再粘贴。
+      render: shell
+    validations:
+      required: false

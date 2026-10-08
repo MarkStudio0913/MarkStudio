@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 安全漏洞（请勿公开提交）
+    url: https://github.com/MarkStudio0913/MarkStudio/security/advisories/new
+    about: 发现安全漏洞请走私下报告渠道，详见 SECURITY.md
+  - name: 使用问题 / 使用说明
+    url: https://github.com/MarkStudio0913/MarkStudio/blob/main/docs/%E4%BD%BF%E7%94%A8%E8%AF%B4%E6%98%8E.md
+    about: 完整用户手册：安装、快捷键、功能详解
+  - name: 参与贡献
+    url: https://github.com/MarkStudio0913/MarkStudio/blob/main/CONTRIBUTING.md
+    about: 开发环境、代码约定与 PR 流程

@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<!-- 说明：本文件中部分内联 SVG 图标的 path 数据取自 Feather Icons
+     (https://github.com/feathericons/feather, MIT, Copyright (c) 2013-2023 Cole Bemis)。
+     完整许可文本见仓库根目录 THIRD-PARTY-NOTICES.md。 -->
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self' file: data: blob:; script-src 'self' file: 'unsafe-inline'; style-src 'self' file: 'unsafe-inline'; img-src 'self' file: data: blob:; font-src 'self' file: data:; connect-src 'self' file: data: blob:;">
+  <title>MarkStudio</title>
+  <link rel="stylesheet" href="../../vendor/vditor/dist/index.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body data-theme="light">
+
+  <div id="app">
+  <!-- 标题栏（无框窗口自绘）：MarkStudio 标签 + 文件标签 + 窗口控制按钮，空白处可拖动窗口 -->
+  <div id="titlebar">
+    <!-- 品牌标签：欢迎页隐藏、打开文档后显示（用户反馈：启动界面不需要左上角标识，
+         读文档时保持在标题栏最左上角）；初始带 hidden，由 syncBrandTab() 按标签数切换 -->
+    <button id="brand-tab" type="button" class="hidden" title="MarkStudio — 点击打开系统菜单">
+      <img class="brand-badge" src="../../resources/icon.png" alt="" draggable="false"><span class="brand-name">MarkStudio</span>
+    </button>
+    <!-- 多标签栏 + 新建按钮：md 文件标签依次显示；标签多时逐个压缩（标题尾部省略号），
+         「+」随之可一直贴到窗口按钮左侧；「+」之后的空区保留窗口拖动 -->
+    <div id="tabbar-wrap">
+      <div id="tabbar" class="hidden"></div>
+      <button id="tab-add" type="button" class="hidden" title="新建标签页 (Ctrl+N)">+</button>
+      <div id="tabbar-drag"></div>
+    </div>
+    <div id="win-controls">
+      <button id="win-min" type="button" title="最小化">
+        <svg viewBox="0 0 12 12" width="12" height="12" shape-rendering="geometricPrecision"><line x1="1.5" y1="6" x2="10.5" y2="6" stroke="currentColor" stroke-width="1.2"/></svg>
+      </button>
+      <button id="win-max" type="button" title="最大化">
+        <svg viewBox="0 0 12 12" width="12" height="12" shape-rendering="geometricPrecision"><rect x="1.1" y="1.1" width="9.8" height="9.8" fill="none" stroke="currentColor" stroke-width="1.2"/></svg>
+      </button>
+      <button id="win-close" type="button" title="关闭">
+        <svg viewBox="0 0 12 12" width="12" height="12" shape-rendering="geometricPrecision"><line x1="1.5" y1="1.5" x2="10.5" y2="10.5" stroke="currentColor" stroke-width="1.2"/><line x1="10.5" y1="1.5" x2="1.5" y2="10.5" stroke="currentColor" stroke-width="1.2"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- MarkStudio 标签下拉（系统菜单：移动/最小化/最大化/关闭） -->
+  <div id="brand-menu" class="hidden">
+    <button data-bm="move" type="button">移动</button>
+    <hr class="ctx-sep">
+    <button data-bm="min" type="button">最小化</button>
+    <button data-bm="max" id="bm-max" type="button">最大化</button>
+    <hr class="ctx-sep">
+    <button data-bm="close" type="button">关闭</button>
+  </div>
+
+  <!-- 自绘菜单栏（悬浮即开，渲染层实现，响应更快） -->
+  <!-- 欢迎页不显示（按 Alt 可临时显示）；进入工作区即显示（含只打开了文件夹、尚未打开文件） -->
+  <nav id="menubar" class="hidden"></nav>
+
+  <!-- 欢迎页（未打开文档时） -->
+  <div id="welcome">
+    <div class="welcome-card">
+      <div class="logo-badge">M</div>
+      <h1>MarkStudio</h1>
+      <p class="slogan">简洁优雅的所见即所得 Markdown 编辑器</p>
+      <div class="welcome-actions">
+        <button id="btn-new" class="primary">新建文档</button>
+        <button id="btn-open">打开文件...</button>
+        <button id="btn-open-folder">打开文件夹...</button>
+      </div>
+      <div class="welcome-recent">
+        <div class="recent-head">
+          <span>最近打开</span>
+          <a id="btn-clear-recent" href="javascript:void(0)">清空</a>
+        </div>
+        <ul id="recent-list"></ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- 工作区：左右两块——左块=侧边栏（文件/大纲），右块=文件标签栏 + 正文 -->
+  <div id="workspace" class="hidden">
+    <div id="layout">
+      <aside id="sidebar" class="hidden">
+        <div id="sidebar-tabs">
+          <button data-tab="files" class="tab active">文件</button>
+          <button data-tab="outline" class="tab">大纲</button>
+        </div>
+        <div id="panel-files" class="panel">
+          <div class="panel-toolbar">
+            <span id="files-root-name" class="root-name"></span>
+          </div>
+          <div id="file-tree" class="tree"></div>
+        </div>
+        <div id="panel-outline" class="panel hidden">
+          <div id="outline-list" class="tree"></div>
+        </div>
+      </aside>
+      <div id="sidebar-resizer" class="hidden"></div>
+      <main id="main-col">
+        <div id="fbar">
+          <div class="fbar-item">
+            <button class="fbar-btn fbar-caret" data-menu="list" title="列表">
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="9" y1="6" x2="21" y2="6"/><line x1="9" y1="12" x2="21" y2="12"/><line x1="9" y1="18" x2="21" y2="18"/><circle cx="4.5" cy="6" r="1" fill="currentColor" stroke="none"/><circle cx="4.5" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="4.5" cy="18" r="1" fill="currentColor" stroke="none"/></svg>
+              <span class="fbar-caret-mark">▾</span>
+            </button>
+            <div class="fbar-menu hidden" id="fbar-menu-list">
+              <button data-fact="list">无序列表</button>
+              <button data-fact="ordered-list">有序列表</button>
+              <button data-fact="check">任务列表</button>
+            </div>
+          </div>
+          <span class="fbar-sep"></span>
+          <button class="fbar-btn" data-fact="bold" title="加粗 (Ctrl+B)">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 5h6a3.5 3.5 0 0 1 0 7H7z"/><path d="M7 12h7a3.5 3.5 0 0 1 0 7H7z"/></svg>
+          </button>
+          <button class="fbar-btn" data-fact="italic" title="斜体 (Ctrl+I)">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="4" x2="10" y2="4"/><line x1="14" y1="20" x2="5" y2="20"/><line x1="15" y1="4" x2="9" y2="20"/></svg>
+          </button>
+          <button class="fbar-btn" data-fact="inline-code" title="行内代码 (Ctrl+Shift+C)">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+          </button>
+          <span class="fbar-sep"></span>
+          <!-- 字体/字号 为带框下拉框（显示当前值），颜色为 A+色条 图标，均不换行不压缩 -->
+          <div class="fbar-item">
+            <button class="fbar-btn fbar-box" data-menu="font" title="字体（仅选中文本）">
+              <span class="fbx-val" id="fbar-font-val">宋体</span><span class="fbar-caret-mark">▾</span>
+            </button>
+            <div class="fbar-menu hidden" id="fbar-menu-font"></div>
+          </div>
+          <div class="fbar-item">
+            <button class="fbar-btn fbar-box" data-menu="fontsize" title="字号（仅选中文本）">
+              <span class="fbx-val" id="fbar-size-val">16</span><span class="fbar-caret-mark">▾</span>
+            </button>
+            <div class="fbar-menu hidden" id="fbar-menu-fontsize"></div>
+          </div>
+          <div class="fbar-item">
+            <button class="fbar-btn fbar-color-ico" data-menu="color" title="颜色（仅选中文本）">
+              <span class="fbc-a">A</span><span class="fbar-caret-mark">▾</span>
+            </button>
+            <div class="fbar-menu hidden" id="fbar-menu-color"></div>
+          </div>
+          <button class="fbar-btn" data-fact="link" title="插入链接 (Ctrl+K)">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+          </button>
+          <span class="fbar-sep"></span>
+          <button class="fbar-btn" data-fact="image" title="插入图片...">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+          </button>
+          <button class="fbar-btn" data-fact="quote" title="引用">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" stroke="none"><path d="M10.2 7.2c-3 .9-4.8 3-4.8 6.1V17h4.9v-4.9H7.9c.2-1.8 1.1-2.9 2.9-3.5V7.2zm8.9 0c-3 .9-4.8 3-4.8 6.1V17h4.9v-4.9h-2.4c.2-1.8 1.1-2.9 2.9-3.5V7.2z"/></svg>
+          </button>
+          <div class="fbar-item">
+            <button class="fbar-btn fbar-head-btn" data-menu="head" title="标题">H<span class="fbar-caret-mark">▾</span></button>
+            <div class="fbar-menu hidden" id="fbar-menu-head">
+              <button data-fact="h1">标题 1</button>
+              <button data-fact="h2">标题 2</button>
+              <button data-fact="h3">标题 3</button>
+              <button data-fact="h4">标题 4</button>
+              <button data-fact="h5">标题 5</button>
+              <button data-fact="h6">标题 6</button>
+            </div>
+          </div>
+          <span class="fbar-sep"></span>
+          <div class="fbar-item">
+            <button class="fbar-btn" data-menu="more" title="更多工具">⋯</button>
+            <div class="fbar-menu hidden" id="fbar-menu-more">
+              <button data-fact="code">代码块 (Ctrl+Shift+K)</button>
+              <button data-fact="table">插入表格...</button>
+              <button data-fact="strike">删除线</button>
+              <button data-fact="line">分隔线</button>
+              <hr class="fbar-menu-sep">
+              <button data-fact="undo">撤销 (Ctrl+Z)</button>
+              <button data-fact="redo">重做 (Ctrl+Shift+Z)</button>
+              <button data-fact="find">查找 (Ctrl+F)</button>
+            </div>
+          </div>
+          <span class="fbar-spacer"></span>
+          <button class="fbar-btn fbar-src" data-fact="source" title="源代码模式 (Ctrl+/)">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+            <span class="fbar-src-label">源码</span>
+          </button>
+        </div>
+        <div id="editor-row">
+          <div id="line-gutter"><div id="line-gutter-inner"></div></div>
+          <div id="editor"></div>
+          <textarea id="source" class="hidden" spellcheck="false" placeholder="在此输入 Markdown 源代码..."></textarea>
+          <div id="reader" class="hidden">
+            <div id="reader-banner">
+              <span id="reader-banner-text">快速阅读模式：文件过大（<b id="reader-size"></b>），已分块只读渲染以保证流畅。</span>
+              <button id="reader-edit" type="button" title="整篇进入编辑模式（大文件可能卡顿数十秒）">仍用编辑模式打开</button>
+            </div>
+            <div id="reader-scroll"><div id="reader-body" class="vditor-reset"></div></div>
+          </div>
+        </div>
+        <div id="table-picker" class="hidden">
+          <div class="tp-title">插入表格 — 移动鼠标选择 行数 × 列数，点击确认</div>
+          <div class="tp-body">
+            <div id="tp-grid"></div>
+            <div id="tp-label">1 × 1</div>
+            <div class="tp-custom">
+              <span>自定义</span>
+              <input id="tp-rows" type="number" min="1" max="30" value="3"> <span>行 ×</span>
+              <input id="tp-cols" type="number" min="1" max="20" value="3"> <span>列</span>
+              <button id="tp-custom-ok">插入</button>
+            </div>
+          </div>
+          <div class="tp-title tp-ops-title" id="tp-ops-title">表格操作（光标需置于表格内）</div>
+          <div id="tp-ops" class="hidden">
+            <button data-top="row-above">行上方插入</button>
+            <button data-top="row-below">行下方插入</button>
+            <button data-top="row-del">删除当前行</button>
+            <button data-top="row-up">行上移</button>
+            <button data-top="row-down">行下移</button>
+            <button data-top="col-left">左侧插入列</button>
+            <button data-top="col-right">右侧插入列</button>
+            <button data-top="col-del">删除当前列</button>
+            <button data-top="col-move-left">列左移</button>
+            <button data-top="col-move-right">列右移</button>
+            <button data-top="table-del" class="tp-danger">删除整个表格</button>
+          </div>
+        </div>
+      </main>
+    </div>
+    <footer id="statusbar">
+      <span class="st-right">
+        <span id="st-save">已保存</span>
+        <span class="sep">|</span>
+        <span id="st-pos" title="行:列">行：列</span>
+        <span class="sep">|</span>
+        <span id="st-words">0 字</span>
+        <span class="sep">|</span>
+        <span id="st-chars">0 字符</span>
+        <span class="sep">|</span>
+        <span id="st-enc">UTF-8</span>
+      </span>
+    </footer>
+  </div>
+  </div><!-- /#app -->
+
+  <!-- 查找/替换（R75-8：iOS27 毛玻璃 + 可拖动 + Word 风格；标题栏 grip 拖动移动） -->
+  <div id="findbar" class="hidden">
+    <div id="findbar-grip">
+      <span class="findbar-title">查找</span>
+      <button id="find-close" type="button" class="findbar-close" title="关闭">
+        <svg viewBox="0 0 12 12" width="11" height="11" shape-rendering="geometricPrecision"><line x1="1.5" y1="1.5" x2="10.5" y2="10.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><line x1="10.5" y1="1.5" x2="1.5" y2="10.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+    <div class="find-row">
+      <input id="find-input" type="text" placeholder="查找...">
+      <span id="find-count" class="find-count"></span>
+      <button id="find-prev" type="button" title="上一个（Shift+Enter）">↑</button>
+      <button id="find-next" type="button" title="下一个（Enter）">↓</button>
+    </div>
+    <div class="find-row">
+      <input id="replace-input" type="text" placeholder="替换为...">
+      <button id="replace-one" type="button">替换</button>
+      <button id="replace-all" type="button">全部替换</button>
+    </div>
+    <div class="find-row find-opts">
+      <label class="case-toggle"><input id="find-case" type="checkbox">区分大小写</label>
+      <label class="case-toggle"><input id="find-word" type="checkbox">全字匹配</label>
+    </div>
+  </div>
+
+  <!-- 图片工具条（R75-4a：点选图片后浮现在图片上方，参考 Word 图片操作） -->
+  <div id="imgbar" class="hidden">
+    <button type="button" data-imgact="crop" title="裁剪">裁剪</button>
+    <button type="button" data-imgact="zoom-in" title="放大">放大</button>
+    <button type="button" data-imgact="zoom-out" title="缩小">缩小</button>
+    <button type="button" data-imgact="reset-size" title="恢复原始尺寸">原尺寸</button>
+    <span class="imgbar-sep"></span>
+    <button type="button" data-imgact="remove" class="imgbar-danger" title="删除图片">删除</button>
+  </div>
+
+  <!-- 段落悬浮栏（R80-3：编辑模式鼠标悬停在段落/标题上时，在其上方浮现「在上方/下方插入段落」） -->
+  <div id="para-bar" class="hidden">
+    <button type="button" data-paraact="above" title="在该段上方插入一个新段落">在上方插入段落</button>
+    <button type="button" data-paraact="below" title="在该段下方插入一个新段落">在下方插入段落</button>
+  </div>
+
+  <!-- 图片裁剪（R75-4a：拖框选区，确认后另存为新图并替换文中引用） -->
+  <div id="modal-crop" class="modal hidden">
+    <div class="modal-card crop">
+      <h3>裁剪图片</h3>
+      <div class="crop-stage" id="crop-stage"><canvas id="crop-canvas"></canvas></div>
+      <div class="crop-hint">在图上按住拖动以框选要保留的区域</div>
+      <div class="modal-actions">
+        <button id="crop-cancel">取消</button>
+        <button id="crop-ok" class="primary">确认裁剪</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 设置（R68：分 tab——通用/外观/编辑/快捷键，每页独立滚动） -->
+  <div id="modal-settings" class="modal hidden">
+    <div class="modal-card settings">
+      <h3>设置</h3>
+      <div class="set-tabs" id="set-tabs">
+        <button type="button" class="set-tab active" data-pane="pane-general">通用</button>
+        <button type="button" class="set-tab" data-pane="pane-appearance">外观</button>
+        <button type="button" class="set-tab" data-pane="pane-editor">编辑</button>
+        <button type="button" class="set-tab" data-pane="pane-shortcuts">快捷键</button>
+      </div>
+      <div class="set-panes">
+        <div class="set-pane active" id="pane-general">
+          <div class="form-row"><label>界面主题</label>
+            <select id="set-theme">
+              <option value="light">浅色</option>
+              <option value="dark">深色</option>
+            </select>
+          </div>
+          <div class="form-row"><label>内容主题</label>
+            <select id="set-content-theme">
+              <option value="auto">跟随界面（推荐）</option>
+              <option value="light">GitHub 风格</option>
+              <option value="ant-design">Ant Design</option>
+              <option value="wechat">公众号风格</option>
+            </select>
+          </div>
+          <div class="form-row"><label>关闭窗口时（点 X / 菜单退出）</label>
+            <select id="set-close-action">
+              <option value="ask">每次询问（推荐）</option>
+              <option value="minimize">最小化到系统托盘（保持运行）</option>
+              <option value="quit">直接退出软件</option>
+            </select>
+          </div>
+        </div>
+        <div class="set-pane" id="pane-appearance">
+          <div class="form-row"><label>正文字号 (px)</label>
+            <input id="set-fontsize" type="number" min="12" max="32" step="1">
+          </div>
+          <div class="form-row"><label>正文字体</label>
+            <select id="set-font"><option value="">系统默认</option></select>
+          </div>
+          <div class="form-row"><label>段落行距</label>
+            <span class="lh-row">
+              <select id="set-lh">
+                <option value="1.4">1.4 紧凑</option>
+                <option value="1.6">1.6 稍紧凑</option>
+                <option value="1.75">1.75 默认</option>
+                <option value="1.9">1.9 适中</option>
+                <option value="2.1">2.1 宽松</option>
+                <option value="2.4">2.4 很宽松</option>
+                <option value="custom">自定义…</option>
+              </select>
+              <input id="set-lh-num" type="number" min="1" max="3" step="0.05">
+            </span>
+          </div>
+          <div class="form-row"><label>正文宽度</label>
+            <select id="set-width">
+              <option value="full">全宽（跟随窗口，推荐）</option>
+              <option value="1200">1200 像素</option>
+              <option value="1000">1000 像素</option>
+              <option value="860">860 像素（窄版式）</option>
+            </select>
+          </div>
+          <div class="form-row"><label>正文居中显示（靠左为默认）</label>
+            <input id="set-center" type="checkbox">
+          </div>
+        </div>
+        <div class="set-pane" id="pane-editor">
+          <div class="form-row"><label>自动换行（源码模式不折行时横向滚动）</label>
+            <input id="set-wrap" type="checkbox">
+          </div>
+          <div class="form-row"><label>自动保存</label>
+            <input id="set-autosave" type="checkbox">
+          </div>
+          <div class="form-row"><label>打字机模式</label>
+            <input id="set-typewriter" type="checkbox">
+          </div>
+          <div class="form-row"><label>专注模式</label>
+            <input id="set-focus" type="checkbox">
+          </div>
+        </div>
+        <div class="set-pane" id="pane-shortcuts">
+          <div id="set-sc-list"></div>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button id="settings-reset-all" class="ghost">恢复默认</button>
+        <span class="modal-actions-spacer"></span>
+        <button id="settings-cancel">取消</button>
+        <button id="settings-ok" class="primary">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 快捷键说明（R70e：标题/提示/表格在 .sc-scroll 内滚动，底部「关闭」按钮常驻可见） -->
+  <div id="modal-shortcuts" class="modal hidden">
+    <div class="modal-card shortcuts">
+      <div class="sc-scroll">
+        <h3>快捷键说明</h3>
+        <p class="sc-hint-tip">以下列表随自定义设置实时更新；自定义请通过「文件 → 设置 → 快捷键」。</p>
+        <table id="shortcuts-table"></table>
+      </div>
+      <div class="modal-actions"><button id="shortcuts-close" class="primary">关闭</button></div>
+    </div>
+  </div>
+
+  <!-- 未保存改动确认（R50）：iOS 风格毛玻璃卡片 + 警告图标 + 关闭按钮 -->
+  <div id="unsaved-modal" class="modal hidden">
+    <div class="modal-card unsaved-card">
+      <button class="unsaved-x" id="unsaved-x" title="关闭">
+        <svg viewBox="0 0 12 12" width="12" height="12" shape-rendering="geometricPrecision"><line x1="1.5" y1="1.5" x2="10.5" y2="10.5" stroke="currentColor" stroke-width="1.2"/><line x1="10.5" y1="1.5" x2="1.5" y2="10.5" stroke="currentColor" stroke-width="1.2"/></svg>
+      </button>
+      <div class="unsaved-icon">
+        <svg viewBox="0 0 24 24" fill="currentColor"><rect x="10.4" y="5.4" width="3.2" height="9.2" rx="1.6"/><circle cx="12" cy="17.6" r="1.9"/></svg>
+      </div>
+      <h3 class="unsaved-title">未保存的改动</h3>
+      <p class="unsaved-msg" id="unsaved-msg"></p>
+      <div class="unsaved-btns">
+        <button class="unsaved-discard" id="unsaved-discard">不保存</button>
+        <button id="unsaved-cancel">取消</button>
+        <button class="primary" id="unsaved-save">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 关闭确认（R62）：替代系统原生「要关闭 MarkStudio 吗？」——同款 iOS 毛玻璃卡片，
+       右上红点与标题栏窗口关闭按钮完全一致（R53-7 模式） -->
+  <div id="close-modal" class="modal hidden">
+    <div class="modal-card unsaved-card">
+      <button class="unsaved-x" id="close-x" title="关闭">
+        <svg viewBox="0 0 12 12" width="12" height="12" shape-rendering="geometricPrecision"><line x1="1.5" y1="1.5" x2="10.5" y2="10.5" stroke="currentColor" stroke-width="1.2"/><line x1="10.5" y1="1.5" x2="1.5" y2="10.5" stroke="currentColor" stroke-width="1.2"/></svg>
+      </button>
+      <div class="unsaved-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      </div>
+      <h3 class="unsaved-title">要关闭 MarkStudio 吗？</h3>
+      <p class="unsaved-msg">「最小化」后窗口隐藏、程序继续在后台运行，点任务栏最右侧的系统托盘图标即可恢复；「退出」则完全关闭程序。</p>
+      <!-- R64：记住本次选择（最小化/退出）→ 写 closeAction，后续点 × 直接执行不再弹窗 -->
+      <label class="close-remember"><input type="checkbox" id="close-remember" /><span>记住我的选择</span></label>
+      <div class="unsaved-btns">
+        <button class="unsaved-discard" id="close-quit">退出</button>
+        <button id="close-cancel">取消</button>
+        <button class="primary" id="close-min">最小化</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 关于 MarkStudio（R62）：同款 iOS 毛玻璃卡片，替代系统原生对话框 -->
+  <div id="about-modal" class="modal hidden">
+    <div class="modal-card unsaved-card about-card">
+      <button class="unsaved-x" id="about-x" title="关闭">
+        <svg viewBox="0 0 12 12" width="12" height="12" shape-rendering="geometricPrecision"><line x1="1.5" y1="1.5" x2="10.5" y2="10.5" stroke="currentColor" stroke-width="1.2"/><line x1="10.5" y1="1.5" x2="1.5" y2="10.5" stroke="currentColor" stroke-width="1.2"/></svg>
+      </button>
+      <div class="logo-badge about-logo">M</div>
+      <h3 class="unsaved-title">MarkStudio</h3>
+      <p class="about-ver" id="about-ver"></p>
+      <p class="unsaved-msg">一款所见即所得的 Markdown 编辑器。支持即时渲染、多标签编辑、大纲与文件树、字体/颜色样式、深浅色主题、代码高亮与 KaTeX 数学公式、图片粘贴、导出 Word/PDF/HTML 等。</p>
+      <div class="unsaved-btns"><button class="primary" id="about-ok">好</button></div>
+    </div>
+  </div>
+
+  <!-- 拖入 Markdown 文件咨询（R72）：同款 iOS 毛玻璃卡片；三个选项——
+       复制到当前文件夹并打开 / 新窗口打开（目录=文件所在目录）/ 取消 -->
+  <div id="drop-modal" class="modal hidden">
+    <div class="modal-card unsaved-card drop-card">
+      <div class="unsaved-icon drop-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      </div>
+      <h3 class="unsaved-title" id="drop-title"></h3>
+      <p class="unsaved-msg" id="drop-msg"></p>
+      <div class="unsaved-btns">
+        <button id="drop-copy">复制到当前文件夹并打开</button>
+        <button class="primary" id="drop-newwin">在新窗口打开</button>
+        <button id="drop-cancel">取消</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- R72：拖拽文件悬停遮罩（纯提示，pointer-events:none 不干扰 drop 命中） -->
+  <div id="drop-overlay" class="hidden">
+    <div class="drop-hint">松开以打开 Markdown 文件</div>
+  </div>
+
+  <!-- 正文右键菜单 -->
+  <div id="ctxmenu" class="hidden">
+    <button data-ctx="cut">剪切</button>
+    <button data-ctx="copy">复制</button>
+    <button data-ctx="paste">粘贴</button>
+    <button data-ctx="select-all">全选</button>
+    <hr class="ctx-sep">
+    <button data-ctx="translate" id="ctx-translate">翻译</button>
+    <!-- R61：表格右键——对选中单元格单独设置对齐 + 清空（仅鼠标在表格内时显示） -->
+    <hr class="ctx-sep hidden" id="ctx-table-sep">
+    <button data-ctx="align-left" class="hidden">左对齐</button>
+    <button data-ctx="align-center" class="hidden">居中对齐</button>
+    <button data-ctx="align-right" class="hidden">右对齐</button>
+    <button data-ctx="clear-cells" class="hidden">清空选中单元格</button>
+    <!-- R85-P2：段落/标题右键——在上方/下方插入段落（从悬浮栏迁入右键菜单；仅鼠标落在普通段落或标题内时显示） -->
+    <hr class="ctx-sep hidden" id="ctx-para-sep">
+    <button data-ctx="insert-para-above" class="hidden">在上方插入段落</button>
+    <button data-ctx="insert-para-below" class="hidden">在下方插入段落</button>
+  </div>
+
+  <!-- 行号栏右键菜单（隐藏行号） -->
+  <div id="gutter-menu" class="hidden">
+    <button id="gm-hide" type="button">隐藏行号</button>
+  </div>
+
+  <!-- 文件标签悬浮卡片（R46）：悬浮标签「✕」显示文件名（可重命名）+ 完整路径 -->
+  <div id="tab-card" class="hidden">
+    <input id="tab-card-name" type="text" spellcheck="false" autocomplete="off">
+    <div id="tab-card-path"></div>
+    <div id="tab-card-dirty" class="hidden"></div>
+  </div>
+
+  <!-- 应用内自定义取色面板（主流软件风格：大预览 + HSL 滑杆 + 十六进制 + 常用色） -->
+  <div id="color-picker">
+    <div class="cp-head">
+      <span class="cp-title">自定义颜色（仅选中文本）</span>
+      <button class="cp-close" id="cp-close" type="button" title="关闭">✕</button>
+    </div>
+    <div class="cp-row">
+      <div class="cp-swatch" id="cp-swatch"></div>
+      <input class="cp-hex" id="cp-hex" type="text" maxlength="7" spellcheck="false" autocomplete="off">
+    </div>
+    <div class="cp-slider-row">
+      <label>色相 <span id="cp-hv"></span></label>
+      <input type="range" id="cp-h" min="0" max="360" step="1">
+    </div>
+    <div class="cp-slider-row">
+      <label>饱和度 <span id="cp-sv"></span></label>
+      <input type="range" id="cp-s" min="0" max="100" step="1">
+    </div>
+    <div class="cp-slider-row">
+      <label>亮度 <span id="cp-lv"></span></label>
+      <input type="range" id="cp-l" min="0" max="100" step="1">
+    </div>
+    <div class="cp-common" id="cp-common"></div>
+    <div class="cp-foot">
+      <button id="cp-cancel" type="button">取消</button>
+      <button id="cp-ok" type="button" class="primary">应用</button>
+    </div>
+  </div>
+
+  <!-- 翻译结果悬浮窗：展示译文，不改动正文 -->
+  <div id="trpop" class="hidden">
+    <div class="trpop-head">
+      <span class="trpop-title">翻译结果</span>
+      <span class="trpop-dir" id="trpop-dir"></span>
+      <button class="trpop-close" id="trpop-close" title="关闭">✕</button>
+    </div>
+    <div class="trpop-src" id="trpop-src"></div>
+    <div class="trpop-body" id="trpop-body"></div>
+    <div class="trpop-foot">
+      <button class="trpop-copy" id="trpop-copy">复制译文</button>
+    </div>
+  </div>
+
+  <!-- 所有系统字体面板（选区字体用，支持搜索） -->
+  <div id="fontpanel" class="hidden">
+    <div class="fp-head">
+      <input id="fp-search" type="text" placeholder="搜索系统字体…" spellcheck="false">
+      <button id="fp-close" title="关闭">✕</button>
+    </div>
+    <div id="fp-list" class="fp-list"></div>
+  </div>
+
+  <div id="toast" class="hidden"></div>
+
+  <!-- MarkStudio R39：加载带补丁的 index.js（单一事实源）。
+       官方 index.min.js 无法跟随补丁再生成（本地无压缩器），曾出现两份代码漂移
+       （min 缺补丁导致 R39/R40 vendor 修复不生效），已删除 min 版本 -->
+  <script src="../../vendor/vditor/dist/index.js"></script>
+  <link rel="stylesheet" href="../../vendor/vditor/dist/js/katex/katex.min.css">
+  <script src="../../vendor/vditor/dist/js/katex/katex.min.js"></script>
+    <script src="docx-gen.js"></script>
+<script src="renderer.js"></script>
+</body>
+</html>

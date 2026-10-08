@@ -1,0 +1,127 @@
+{
+  "name": "markstudio",
+  "version": "1.0.0",
+  "description": "MarkStudio - 一款所见即所得的 Markdown 编辑器",
+  "main": "src/main/main.js",
+  "author": "MarkStudio contributors",
+  "license": "MIT",
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MarkStudio0913/MarkStudio.git"
+  },
+  "homepage": "https://github.com/MarkStudio0913/MarkStudio#readme",
+  "bugs": {
+    "url": "https://github.com/MarkStudio0913/MarkStudio/issues"
+  },
+  "scripts": {
+    "start": "electron .",
+    "postinstall": "node scripts/copy-vendor.js",
+    "dist": "electron-builder --win --mac --linux",
+    "dist:win": "electron-builder --win",
+    "dist:mac": "electron-builder --mac",
+    "dist:linux": "electron-builder --linux",
+    "smoke": "node scripts/smoke.js"
+  },
+  "dependencies": {
+    "iconv-lite": "^0.6.3"
+  },
+  "devDependencies": {
+    "electron": "31.7.7",
+    "electron-builder": "24.13.3",
+    "vditor": "3.11.3"
+  },
+  "build": {
+    "appId": "com.markstudio.app",
+    "productName": "MarkStudio",
+    "copyright": "Copyright © 2026 MarkStudio",
+    "directories": {
+      "output": "dist",
+      "buildResources": "resources"
+    },
+    "files": [
+      "src/**/*",
+      "vendor/**/*",
+      "resources/icon.png",
+      "resources/icon.ico",
+      "resources/icon-mac.png",
+      "package.json"
+    ],
+    "electronLanguages": ["zh-CN", "en-US"],
+    "compression": "maximum",
+    "fileAssociations": [
+      {
+        "ext": "md",
+        "name": "Markdown 文档",
+        "description": "Markdown 文档",
+        "role": "Editor"
+      },
+      {
+        "ext": "markdown",
+        "name": "Markdown 文档",
+        "description": "Markdown 文档",
+        "role": "Editor"
+      }
+    ],
+    "win": {
+      "icon": "resources/icon.ico",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        },
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
+      ]
+    },
+    "mac": {
+      "icon": "resources/icon-mac.png",
+      "category": "public.app-category.productivity",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": ["x64", "arm64"]
+        },
+        {
+          "target": "zip",
+          "arch": ["x64", "arm64"]
+        }
+      ],
+      "artifactName": "MarkStudio-${version}-${os}-${arch}.${ext}"
+    },
+    "linux": {
+      "icon": "resources/icon.png",
+      "category": "Office",
+      "maintainer": "MarkStudio contributors",
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": ["x64"]
+        },
+        {
+          "target": "deb",
+          "arch": ["x64"]
+        }
+      ],
+      "artifactName": "MarkStudio-${version}-${os}-${arch}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "MarkStudio",
+      "artifactName": "MarkStudio-Setup-${version}.${ext}",
+      "uninstallDisplayName": "MarkStudio - Markdown 编辑器",
+      "include": "build/installer.nsh",
+      "installerSidebar": "build/installer-bg.bmp",
+      "uninstallerSidebar": "build/installer-bg.bmp"
+    },
+    "portable": {
+      "artifactName": "MarkStudio-Portable-${version}.${ext}"
+    }
+  }
+}

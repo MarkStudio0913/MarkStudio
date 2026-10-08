@@ -1,0 +1,24 @@
+# https://editorconfig.org
+# 让不同编辑器/IDE 在本项目下保持一致的基础风格。
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 2
+
+[*.md]
+# Markdown 行尾两个空格是有意义的硬换行，不要自动删除
+trim_trailing_whitespace = false
+
+[*.{yml,yaml}]
+indent_size = 2
+
+[*.nsh]
+end_of_line = crlf
+
+[*.{png,jpg,jpeg,gif,webp,bmp,ico,woff,woff2,ttf,otf,eot,bmp}]
+insert_final_newline = false

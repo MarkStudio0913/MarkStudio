@@ -1,0 +1,57 @@
+# 统一换行符：仓库内一律存为 LF，检出时由各平台按 core.autocrlf / core.eol 决定。
+# 本仓库历史文件曾混用 CRLF（JS/CSS）与 LF（Markdown/配置），此文件将其归一化。
+* text=auto
+
+# 源码与文档显式声明为文本（便于跨平台 diff / merge）
+*.js      text
+*.json    text
+*.md      text
+*.html    text
+*.css     text
+*.yml     text
+*.yaml    text
+*.txt     text
+.gitignore text
+.gitattributes text
+.npmrc    text
+
+# NSIS 安装器脚本固定 CRLF（由 Windows 上的 makensis 编译，CRLF 最稳妥）
+*.nsh     text eol=crlf
+
+# 二进制资源：禁止任何换行符转换与文本 diff
+*.png     binary
+*.jpg     binary
+*.jpeg    binary
+*.gif     binary
+*.webp    binary
+*.bmp     binary
+*.ico     binary
+*.icns    binary
+*.woff    binary
+*.woff2   binary
+*.ttf     binary
+*.otf     binary
+*.eot     binary
+*.exe     binary
+*.dll     binary
+*.node    binary
+*.7z      binary
+
+# ---------------------------------------------------------------------------
+# GitHub Linguist：内嵌的第三方库不应计入本项目的语言统计，
+# 也不应在 code review 中默认展开（它们由 scripts/copy-vendor.js 从 npm 包重建）。
+# ---------------------------------------------------------------------------
+vendor/**               linguist-vendored
+vendor/**               linguist-generated
+# 上游代码自带行尾空白/文件末尾空行，不要因此让 git diff --check 或
+# git apply --whitespace=error 在本仓库失败（我们不修改 vendor 内容）
+vendor/**               whitespace=-trailing-space,-space-before-tab,-blank-at-eol,-blank-at-eof,-indent-with-non-tab
+package-lock.json       linguist-generated
+build/installer-bg.bmp  linguist-generated
+resources/icon.ico      linguist-generated
+resources/icon.png      linguist-generated
+resources/icon-mac.png  linguist-generated
+
+# 发布产物在 Releases 中提供，不参与 diff 统计
+# （用前导 / 锚定根目录，避免连带匹配 vendor/vditor/dist）
+/dist/**               linguist-generated

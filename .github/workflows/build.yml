@@ -1,0 +1,105 @@
+# 三平台原生构建：Windows (NSIS/Portable) / macOS (DMG/ZIP) / Linux (AppImage/deb)
+# electron-builder 无法从 Windows 交叉构建 macOS 产物，因此每个平台在自己的
+# 原生 runner 上构建。推送 tag（v*）或手动触发（Actions → Build installers → Run workflow）。
+# 三个 job 完成后，release job 汇总所有产物到同一个 GitHub Release。
+#
+# macOS 未配置 APPLE_ID/APPLE_TEAM_ID/APPLE_APP_SPEC_ID 时产出「未签名」DMG/ZIP，
+# 用户需右键→打开绕过 Gatekeeper。正式分发请配置 Apple Developer 凭据（见下方注释）。
+name: Build installers
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+# 最小权限：三个构建 job 只需要读仓库；写权限单独授予 release job。
+# （注意：actions/* 目前固定在可变的 major tag 上，供应链上建议改为按 commit SHA 固定，
+#  可用 Dependabot 保持更新——详见 SECURITY.md。）
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: "20"
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npm run dist:win
+      # 发布前自检：对打包产物做 300+ 项静态校验（含 vendor/vditor 补丁标记）。
+      # postinstall 会从 npm 包重建 vendor 并还原补丁，若补丁还原失败此步会直接失败，
+      # 避免把缺补丁的包发出去（此前 copy-vendor 只在控制台打警告、不中断构建）。
+      - run: node tools/asar-check.js dist/win-unpacked/resources/app.asar
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installers-win
+          path: dist/*
+
+  build-mac:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      # 正式签名/公证（可选）：取消注释并在仓库 Secrets 配置
+      # （APPLE_CERTIFICATE_P12_BASE64 / APPLE_CERTIFICATE_PASSWORD / APPLE_ID / APPLE_TEAM_ID）
+      # - run: |
+      #     echo "${{ secrets.APPLE_CERTIFICATE_P12_BASE64 }}" | base64 -d > /tmp/cert.p12
+      #     echo "CSC_LINK=/tmp/cert.p12" >> $GITHUB_ENV
+      #     echo "CSC_KEY_PASSWORD=${{ secrets.APPLE_CERTIFICATE_PASSWORD }}" >> $GITHUB_ENV
+      #     echo "APPLE_ID=${{ secrets.APPLE_ID }}" >> $GITHUB_ENV
+      #     echo "APPLE_ID_PASSWORD=${{ secrets.APPLE_ID_PASSWORD }}" >> $GITHUB_ENV
+      #     echo "APPLE_TEAM_ID=${{ secrets.APPLE_TEAM_ID }}" >> $GITHUB_ENV
+      - run: npm run dist:mac
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installers-mac
+          path: dist/*
+
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      # AppImage 构建需要 FUSE 相关依赖
+      - run: sudo apt-get update && sudo apt-get install -y libnss3 libgtk-3-0 fuse
+      - run: npm ci
+      - run: npm run dist:linux
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installers-linux
+          path: dist/*
+
+  release:
+    needs: [build-windows, build-mac, build-linux]
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    # 只有这一步需要写权限（创建 Release / 上传产物）
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+      - run: |
+          # 扁平化到单层目录
+          mkdir -p flat
+          for d in release-assets/*/; do cp -r "$d"* flat/; done
+          ls -la flat
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            flat/**/*
+          generate_release_notes: true

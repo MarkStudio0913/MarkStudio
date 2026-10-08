@@ -1,0 +1,69 @@
+# 轻量 CI：每次 push 到主分支 / 每次 PR 都跑仓库卫生与语法检查。
+#
+# 设计要点：
+#   1. **不执行 npm ci**，因此 PR（含来自 fork 的 PR）不会触发任何 postinstall 脚本，
+#      检查本身零依赖、秒级完成，攻击面最小。
+#   2. 权限只读，且只使用官方 actions；不使用 pull_request_target，
+#     也未把任何 ${{ github.event.* }} 内容插值进 run:（避免脚本注入）。
+#   3. 安全不变量与许可证一致性由 tools/repo-lint.js 断言 —— 这些项目此前是「一次性人工排查」，
+#      现在成为可重复执行的 CI 门禁，防止后续 PR 把问题带回来。
+#
+# 供应链提示：actions/* 目前固定在可变的 major tag 上，更严格的做法是固定到 commit SHA
+# （可用 Dependabot 自动升级）。详见 SECURITY.md。
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: 仓库卫生与语法检查
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: 仓库卫生与安全不变量（零依赖）
+        run: node tools/repo-lint.js
+
+      - name: JavaScript 语法检查
+        run: |
+          fail=0
+          count=0
+          while IFS= read -r f; do
+            count=$((count + 1))
+            node --check "$f" || fail=1
+          done < <(find src scripts tools build -type f -name '*.js' -not -path '*/node_modules/*' | sort)
+          echo "已检查 $count 个 JS 文件"
+          exit $fail
+
+      - name: JSON 校验
+        run: |
+          node -e "
+            const fs = require('fs');
+            for (const f of ['package.json', 'package-lock.json']) {
+              JSON.parse(fs.readFileSync(f, 'utf8'));
+              console.log('OK ' + f);
+            }
+          "
+
+      - name: vendor 目录完整性
+        run: |
+          # vendor 缺失时应用无法离线运行；上游 npm 包不含 Lute 许可证，本仓库已补齐
+          test -f vendor/vditor/dist/index.js
+          test -f vendor/vditor/dist/index.css
+          test -f vendor/vditor/dist/js/lute/lute.min.js
+          test -f vendor/vditor/dist/js/katex/katex.min.js
+          test -f vendor/vditor/dist/js/katex/LICENSE
+          test -f vendor/vditor/dist/js/highlight.js/LICENSE
+          test -f vendor/vditor/dist/js/lute/LICENSE
+          test -f vendor/vditor/LICENSE
+          echo "vendor 完整性 OK"

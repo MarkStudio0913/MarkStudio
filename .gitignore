@@ -1,0 +1,37 @@
+# 依赖
+node_modules/
+
+# 构建产物（经 GitHub Releases / CI 发布，不入库）
+# 注意：必须用前导 / 锚定到仓库根目录。若写成不带 / 的 `dist*/`，
+# gitignore 会在**任意层级**匹配同名目录，从而把 vendor/vditor/dist/（编辑器核心，
+# 需要随仓库提交以保证离线可用）整个排除掉，克隆下来的仓库将无法运行。
+/dist/
+/dist*/
+
+# ZCode 会话内部记录（非项目内容）
+.zcode/
+
+# 开发杂项
+*.log
+*.local
+Thumbs.db
+.DS_Store
+
+# 性能测试生成文件（可用 tools/gen-*.js 重新生成）
+tools/big*.md
+tools/heavy-perf.md
+# 开发工具生成在仓库根目录的测试文档（tools/gen-test-files.js、tools/gen-large-prose.js）
+test-table.md
+test-large.md
+test-large-prose.md
+# 冒烟测试写出的临时文档（scripts/smoke.js 每次运行会重新生成）
+test-assets/smoke-test.md
+
+# 第三方工具归档与解包目录（非项目内容）
+tools/*.7z
+tools/asar-x3/
+
+# 有版权的第三方资料：这类素材（他人文档截图/图片等）不得随本仓库再分发。
+# 仅用于本地开发参考，永远不入库。
+*8023*
+img_8023/
