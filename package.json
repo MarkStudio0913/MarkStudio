@@ -24,7 +24,7 @@
     "smoke": "node scripts/smoke.js"
   },
   "dependencies": {
-    "iconv-lite": "^0.6.3"
+    "iconv-lite": "^0.7.3"
   },
   "devDependencies": {
     "electron": "31.7.7",
