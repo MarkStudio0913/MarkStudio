@@ -173,6 +173,20 @@ check('build.yml 顶层权限为只读', /^permissions:\n\s+contents:\s*read\s*$
 check('build.yml 仅在 release job 授予写权限', (buildYml.match(/contents:\s*write/g) || []).length === 1);
 check('build.yml 未使用 pull_request_target', !/pull_request_target/.test(buildYml));
 
+// electron-builder 的自动发布必须显式关闭。
+// 原因：package.json 里一旦有 "repository"，electron-builder 就会据此推断 GitHub 发布目标，
+// 在 CI 中报 “GitHub Personal Access Token is not set … reason=CI detected” 而让打包失败
+//（现象是 NSIS/AppImage 已成功、最后一步崩掉）。Release 由 build.yml 的 release job
+// 用 action-gh-release 创建，构建 job 保持只读、不持有 token。
+const pkgJson = JSON.parse(read('package.json'));
+const distKeys = ['dist', 'dist:win', 'dist:mac', 'dist:linux'];
+const distScripts = distKeys.map((k) => (pkgJson.scripts && pkgJson.scripts[k]) || '');
+check('electron-builder 已显式禁止自动发布（--publish never）',
+  distScripts.every((s) => s.includes('--publish never')),
+  '缺少该参数时 CI 打包会因 GH_TOKEN 缺失而失败：' + distScripts.filter((s) => !s.includes('--publish never')).join(' / '));
+check('package.json 声明了 repository（供 npm/GitHub 元数据使用）',
+  !!(pkgJson.repository && pkgJson.repository.url));
+
 // ---------------------------------------------------------------- 汇总
 console.log('==== repo-lint: ' + pass + ' 通过 / ' + failures.length + ' 失败 ====');
 if (failures.length) {
