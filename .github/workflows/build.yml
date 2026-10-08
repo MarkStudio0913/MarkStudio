@@ -40,7 +40,13 @@ jobs:
       - uses: actions/upload-artifact@v7
         with:
           name: installers-win
-          path: dist/*
+          path: |
+            dist/MarkStudio-*.exe
+            dist/MarkStudio-*.dmg
+            dist/MarkStudio-*.zip
+            dist/MarkStudio-*.AppImage
+            dist/MarkStudio-*.deb
+          if-no-files-found: error
 
   build-mac:
     runs-on: macos-14
@@ -64,7 +70,13 @@ jobs:
       - uses: actions/upload-artifact@v7
         with:
           name: installers-mac
-          path: dist/*
+          path: |
+            dist/MarkStudio-*.exe
+            dist/MarkStudio-*.dmg
+            dist/MarkStudio-*.zip
+            dist/MarkStudio-*.AppImage
+            dist/MarkStudio-*.deb
+          if-no-files-found: error
 
   build-linux:
     runs-on: ubuntu-latest
@@ -81,7 +93,13 @@ jobs:
       - uses: actions/upload-artifact@v7
         with:
           name: installers-linux
-          path: dist/*
+          path: |
+            dist/MarkStudio-*.exe
+            dist/MarkStudio-*.dmg
+            dist/MarkStudio-*.zip
+            dist/MarkStudio-*.AppImage
+            dist/MarkStudio-*.deb
+          if-no-files-found: error
 
   release:
     needs: [build-windows, build-mac, build-linux]
@@ -95,12 +113,12 @@ jobs:
         with:
           path: release-assets
       - run: |
-          # 扁平化到单层目录
           mkdir -p flat
-          for d in release-assets/*/; do cp -r "$d"* flat/; done
-          ls -la flat
+          find release-assets -maxdepth 2 -type f \( -name 'MarkStudio-*.exe' -o -name 'MarkStudio-*.dmg' -o -name 'MarkStudio-*.zip' -o -name 'MarkStudio-*.AppImage' -o -name 'MarkStudio-*.deb' \) -exec cp -n {} flat/ \;
+          test "$(find flat -maxdepth 1 -type f | wc -l)" -eq 8
+          (cd flat && sha256sum * > SHA256SUMS.txt)
       - uses: softprops/action-gh-release@v3
         with:
-          files: |
-            flat/**/*
+          files: flat/*
+          fail_on_unmatched_files: true
           generate_release_notes: true

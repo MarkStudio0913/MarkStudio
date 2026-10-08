@@ -1,0 +1,77 @@
+# 恢复发布：复用已经成功的 tag 构建产物，不修改标签或重新打包。
+name: Publish verified installers
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: Tag build run with three successful build jobs
+        required: true
+        type: string
+      tag:
+        description: Existing version tag
+        required: true
+        default: v1.0.0
+        type: string
+permissions:
+  contents: read
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      RUN_ID: ${{ inputs.run_id }}
+      RELEASE_TAG: ${{ inputs.tag }}
+    steps:
+      - name: Validate tag build provenance
+        run: |
+          [[ "$RUN_ID" =~ ^[0-9]+$ ]]
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          gh api "repos/$GH_REPO/actions/runs/$RUN_ID" > run.json
+          gh api "repos/$GH_REPO/actions/runs/$RUN_ID/jobs?per_page=100" > jobs.json
+          gh api "repos/$GH_REPO/git/ref/tags/$RELEASE_TAG" > tag.json
+          if [ "$(jq -r .object.type tag.json)" = tag ]; then
+            gh api "repos/$GH_REPO/git/tags/$(jq -r .object.sha tag.json)" > annotated.json
+            TAG_SHA=$(jq -r .object.sha annotated.json)
+          else
+            TAG_SHA=$(jq -r .object.sha tag.json)
+          fi
+          test "$(jq -r .head_sha run.json)" = "$TAG_SHA"
+          test "$(jq -r .event run.json)" = push
+          test "$(jq -r .path run.json)" = .github/workflows/build.yml
+          test "$(jq '[.jobs[] | select(.name == "build-windows" or .name == "build-mac" or .name == "build-linux") | select(.conclusion == "success")] | length' jobs.json)" = 3
+      - uses: actions/download-artifact@v8
+        with:
+          run-id: ${{ inputs.run_id }}
+          github-token: ${{ github.token }}
+          pattern: installers-*
+          path: release-assets
+      - name: Select installers and calculate checksums
+        run: |
+          mkdir -p flat
+          find release-assets -maxdepth 2 -type f \( -name 'MarkStudio-*.exe' -o -name 'MarkStudio-*.dmg' -o -name 'MarkStudio-*.zip' -o -name 'MarkStudio-*.AppImage' -o -name 'MarkStudio-*.deb' \) -exec cp -n {} flat/ \;
+          test "$(find flat -maxdepth 1 -type f | wc -l)" -eq 8
+          (cd flat && sha256sum * > SHA256SUMS.txt)
+      - name: Publish verified packages
+        run: |
+          gh release create "$RELEASE_TAG" --repo "$GH_REPO" --draft --title "MarkStudio $RELEASE_TAG" --notes "Preparing verified installers"
+          gh release upload "$RELEASE_TAG" flat/* --repo "$GH_REPO" --clobber
+          cat > release-notes.md <<'NOTES'
+          MarkStudio 首次开源发布：所见即所得 Markdown 编辑器，基于 Electron 与 Vditor。
+
+          下载说明：
+          - Windows x64：Setup 安装版或 Portable 便携版。
+          - macOS：Intel 选择 x64，Apple Silicon 选择 arm64；提供 DMG 和 ZIP。
+          - Linux x64：AppImage 或 Debian/Ubuntu 的 deb 包。
+          - SHA256SUMS.txt 包含全部安装包的 SHA-256 校验值。
+
+          三平台均已在 GitHub Actions 完成打包；Windows 产物已通过 asar 静态检查。
+          当前安装包未使用付费代码签名证书；macOS 未签名、未公证，系统可能显示安全提示。
+          打包验证不等同于各平台 GUI 功能的完整测试。
+
+          第三方许可与安全政策请参阅仓库中的 THIRD-PARTY-NOTICES.md 与 SECURITY.md。
+          NOTES
+          gh release edit "$RELEASE_TAG" --tag "$RELEASE_TAG" --title "MarkStudio $RELEASE_TAG" --notes-file release-notes.md --draft=false --latest
