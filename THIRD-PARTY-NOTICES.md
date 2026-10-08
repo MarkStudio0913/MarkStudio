@@ -12,7 +12,7 @@ MarkStudio 自身代码以 **MIT** 许可发布（见 [LICENSE](LICENSE)）。
 | [Lute](https://github.com/88250/lute) | 随 Vditor | Mulan PSL v2 | © 2019-present 88250 | [`vendor/vditor/dist/js/lute/LICENSE`](vendor/vditor/dist/js/lute/LICENSE) |
 | [KaTeX](https://katex.org) | 随 Vditor | Apache-2.0 | © Khan Academy 及 KaTeX contributors | [`vendor/vditor/dist/js/katex/LICENSE`](vendor/vditor/dist/js/katex/LICENSE) |
 | [highlight.js](https://highlightjs.org) | 11.7.0 | BSD-3-Clause | © 2006 Ivan Sagalaev 及 contributors | [`vendor/vditor/dist/js/highlight.js/LICENSE`](vendor/vditor/dist/js/highlight.js/LICENSE) |
-| [iconv-lite](https://github.com/ashtuchkin/iconv-lite) | 0.6.3 | MIT | © 2011 Alexander Shtuchkin | `node_modules/iconv-lite/LICENSE`（打包进 `app.asar`） |
+| [iconv-lite](https://github.com/ashtuchkin/iconv-lite) | 0.7.3 | MIT | © 2011 Alexander Shtuchkin | `node_modules/iconv-lite/LICENSE`（打包进 `app.asar`） |
 | [Electron](https://github.com/electron/electron) | 31.7.7 | MIT | © Electron contributors | 安装包内 `LICENSE.electron.txt` |
 | Chromium | 随 Electron | BSD-3-Clause 等 | © The Chromium Authors | 安装包内 `LICENSES.chromium.html` |
 
