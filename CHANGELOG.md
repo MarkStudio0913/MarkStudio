@@ -55,5 +55,16 @@
 - 新增 [SECURITY.md](SECURITY.md)、[CONTRIBUTING.md](CONTRIBUTING.md)、[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
 - 修正 `docs/使用说明.md` 中「支持 Mermaid 图表」的不实描述（该渲染器未随应用分发）
 
+### 构建与维护
+
+- GitHub Actions 升级到当前主版本（`checkout@v7` / `setup-node@v7` / `upload-artifact@v7` /
+  `download-artifact@v8` / `softprops/action-gh-release@v3`），消除 runner 上 Node 20 运行时的弃用告警
+- CI 与打包统一使用 Node 22 LTS（Node 20 已于 2026-04 EOL）
+- 新增 [`.github/dependabot.yml`](.github/dependabot.yml)：每周跟进 npm 依赖与 Actions 版本；
+  minor/patch 归组以减少噪音，major 单独出 PR 以便评估破坏性改动（尤其 Electron 大版本）
+- Windows 构建在打包后强制运行 `node tools/asar-check.js`，vendor 补丁丢失会让构建失败而不是静默发出
+- 新增 `tools/repo-lint.js` 并接入 CI：74 项断言覆盖安全不变量、第三方许可一致性、
+  敏感内容扫描、必备文件与仓库配置（含「`.gitignore` 的 dist 规则必须锚定到根目录」这条回归断言）
+
 [未发布]: https://github.com/MarkStudio0913/MarkStudio/compare/v1.0.0...HEAD
 [1.0.0]: https://github.com/MarkStudio0913/MarkStudio/releases/tag/v1.0.0

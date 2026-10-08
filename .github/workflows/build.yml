@@ -13,20 +13,21 @@ on:
   workflow_dispatch:
 
 # 最小权限：三个构建 job 只需要读仓库；写权限单独授予 release job。
-# （注意：actions/* 目前固定在可变的 major tag 上，供应链上建议改为按 commit SHA 固定，
-#  可用 Dependabot 保持更新——详见 SECURITY.md。）
+# 供应链：actions/* 固定在可变的滚动 major tag 上（比 commit SHA 弱，但升级成本低）；
+# 仓库已配置 .github/dependabot.yml 自动跟进新版本。若需更强保证可改为固定 commit SHA。
 permissions:
   contents: read
 
 env:
-  NODE_VERSION: "20"
+  # Node 20 已于 2026-04 EOL，改用仍在维护期的 LTS
+  NODE_VERSION: "22"
 
 jobs:
   build-windows:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -36,7 +37,7 @@ jobs:
       # postinstall 会从 npm 包重建 vendor 并还原补丁，若补丁还原失败此步会直接失败，
       # 避免把缺补丁的包发出去（此前 copy-vendor 只在控制台打警告、不中断构建）。
       - run: node tools/asar-check.js dist/win-unpacked/resources/app.asar
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: installers-win
           path: dist/*
@@ -44,8 +45,8 @@ jobs:
   build-mac:
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -60,7 +61,7 @@ jobs:
       #     echo "APPLE_ID_PASSWORD=${{ secrets.APPLE_ID_PASSWORD }}" >> $GITHUB_ENV
       #     echo "APPLE_TEAM_ID=${{ secrets.APPLE_TEAM_ID }}" >> $GITHUB_ENV
       - run: npm run dist:mac
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: installers-mac
           path: dist/*
@@ -68,8 +69,8 @@ jobs:
   build-linux:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -77,7 +78,7 @@ jobs:
       - run: sudo apt-get update && sudo apt-get install -y libnss3 libgtk-3-0 fuse
       - run: npm ci
       - run: npm run dist:linux
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: installers-linux
           path: dist/*
@@ -90,7 +91,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: release-assets
       - run: |
@@ -98,7 +99,7 @@ jobs:
           mkdir -p flat
           for d in release-assets/*/; do cp -r "$d"* flat/; done
           ls -la flat
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v3
         with:
           files: |
             flat/**/*

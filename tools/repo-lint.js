@@ -74,6 +74,7 @@ const REQUIRED_FILES = [
   'vendor/vditor/dist/css/content-theme/ant-design.css',
   'vendor/vditor/dist/css/content-theme/wechat.css',
   '.github/workflows/build.yml', '.github/workflows/ci.yml',
+  '.github/dependabot.yml',
   '.github/PULL_REQUEST_TEMPLATE.md',
   '.github/ISSUE_TEMPLATE/bug_report.yml',
   '.github/ISSUE_TEMPLATE/feature_request.yml',

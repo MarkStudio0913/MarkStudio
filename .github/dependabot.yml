@@ -1,0 +1,44 @@
+# Dependabot：自动跟进依赖与 GitHub Actions 版本。
+#
+# 为什么需要它：workflow 里的 actions/* 固定在可变的滚动 major tag 上（见 SECURITY.md 的
+# 供应链说明）。有 Dependabot 后，新版本会以 PR 形式出现并跑一遍 CI，比人工盯版本可靠。
+#
+# 策略：
+#   - minor/patch 归组为一个 PR，减少噪音；major 单独出 PR（需要人工评估破坏性改动，
+#     尤其是 Electron 大版本升级，可能影响主进程 API 与打包产物）
+#   - 每周一次，避免频繁打扰
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+    commit-message:
+      prefix: build
+    groups:
+      # 只把非破坏性的小版本升级归组；major 单独出 PR 以便逐个评估
+      minor-and-patch:
+        applies-to: version-updates
+        update-types:
+          - minor
+          - patch
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+      - ci
+    commit-message:
+      prefix: ci
+    groups:
+      actions:
+        patterns:
+          - "*"

@@ -41,8 +41,12 @@ MarkStudio 是一个**本地、离线优先**的桌面 Markdown 编辑器。理�
 
 - `package-lock.json` 中 325 个依赖条目**全部带 sha512 `integrity`**，无 `git:`/`file:`/明文 `http:` 来源。
 - 仓库自带 `.npmrc` 指向 npmmirror（国内镜像，便于大陆网络安装），**这是可选的**：如不需要可删除（见文件内注释）。删除后请重新生成 `package-lock.json`。
-- GitHub Actions 目前将 `actions/*` 固定在可变的 major tag 上。更严格的做法是**固定到 commit SHA**（可用 Dependabot 自动升级）；workflow 已按最小权限配置：顶层 `contents: read`，只有 `release` job 拥有 `contents: write`。
+- GitHub Actions 将 `actions/*` 固定在可变的滚动 major tag 上（如 `actions/checkout@v7`）。这比**固定到 commit SHA** 稍弱，但升级成本低得多；仓库已配置 [`.github/dependabot.yml`](.github/dependabot.yml) 自动跟进新版本，新版本会以 PR 形式出现并跑一遍 CI。若你的威胁模型需要更强保证，把 tag 换成完整 SHA 即可。
+- workflow 按最小权限配置：顶层 `contents: read`，只有 `release` job 拥有 `contents: write`；仓库的 Actions 默认 token 权限也已设为 `read`。
+- 不使用 `pull_request_target`，也不把 `${{ github.event.* }}` 之类的不可信输入插值进 `run:`，避免脚本注入。
+- `ci.yml` 的检查**不执行 `npm ci`**，因此来自 fork 的 PR 不会触发任何 `postinstall` 脚本。
 - Windows 构建在打包后会运行 `node tools/asar-check.js`（300+ 项静态校验，含 vendor 补丁标记），补丁丢失会导致构建失败而不是静默发出。
+- **私下漏洞报告渠道已开启**（Settings → Security → Private vulnerability reporting），见上文。
 
 ## 依赖漏洞
 
